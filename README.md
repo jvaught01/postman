@@ -1,36 +1,113 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Postman API Testing Platform
+
+A modern, Next.js-based API testing platform with built-in caching and rate limiting capabilities.
+
+## Features
+
+- 🚀 Built with Next.js 14 and React 19
+- 💻 Modern TypeScript codebase
+- 🎨 Sleek UI with Tailwind CSS and shadcn/ui components
+- 🔄 Built-in request caching with Redis
+- 🛡️ Rate limiting protection
+- ⚡ Real-time response statistics
+- 🌐 Proxy support for API requests
+
+## Tech Stack
+
+- **Framework:** Next.js 14
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **UI Components:** shadcn/ui
+- **Caching:** Upstash Redis
+- **State Management:** React Hooks
+- **Animations:** Framer Motion
+
+## Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Redis instance (for caching)
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/postman.git
+cd postman
+```
 
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+
+Configure the following variables in `.env.local`:
+```
+UPSTASH_REDIS_REST_URL=your_redis_url
+UPSTASH_REDIS_REST_TOKEN=your_redis_token
+```
+
+4. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### POST /api/proxy
 
-## Learn More
+Proxies API requests with optional caching and rate limiting.
 
-To learn more about Next.js, take a look at the following resources:
+```typescript
+{
+  url: string;
+  method: string;
+  headers?: Record<string, string>;
+  body?: string;
+  cache?: {
+    enabled: boolean;
+    ttl?: number;
+  };
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Rate Limiting
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 20 requests per minute per IP
+- Configurable through environment variables
 
-## Deploy on Vercel
+## Caching
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Redis-based caching system
+- Configurable TTL (default: 30 seconds)
+- Cache invalidation on POST/PUT/DELETE requests
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [shadcn/ui](https://ui.shadcn.com/)
+- [Upstash Redis](https://upstash.com/)
