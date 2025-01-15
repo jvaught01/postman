@@ -52,3 +52,10 @@ next-env.d.ts
 .cache
 
 .vscode/*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+.cursor
