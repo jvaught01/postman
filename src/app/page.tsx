@@ -400,7 +400,7 @@ ${typeof response.data === 'object'
           <Heart className="text-[#FF3366] animate-pulse" />
           <span>by</span>
           <a 
-            href="https://www.linkedin.com/in/juliovaught/" 
+            href="https://www.linkedin.com/in/jvaught91/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-[#FF3366] hover:underline"
