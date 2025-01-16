@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { redis, getCacheKey, type CacheConfig, type CacheStats } from '@/lib/redis'
+import { getRedisClient, getCacheKey, type CacheConfig, type CacheStats } from '@/lib/redis'
+import { SetOptions } from 'redis'
 
 const MAX_TTL = 30 // Maximum cache TTL in seconds
 const RATE_LIMIT = 20 // Number of requests allowed
@@ -17,6 +18,7 @@ async function isRateLimited(ip: string, useRedis: boolean): Promise<boolean> {
   if (!useRedis) return false
   
   try {
+    const redis = await getRedisClient()
     const key = `rate_limit:${ip}`
     const requests = await redis.incr(key)
     
@@ -27,7 +29,7 @@ async function isRateLimited(ip: string, useRedis: boolean): Promise<boolean> {
     return requests > RATE_LIMIT
   } catch (error) {
     console.error('Rate limit check failed:', error)
-    return false // Fail open if Redis is down
+    return false
   }
 }
 
@@ -54,18 +56,28 @@ export async function POST(req: Request) {
     }
 
     const useRedis = cache?.enabled === true
+    let redis = null
 
-    // Check rate limit only if Redis is enabled
-    if (await isRateLimited(ip, useRedis)) {
+    if (useRedis) {
+      try {
+        redis = await getRedisClient()
+      } catch (error) {
+        console.error('Redis initialization failed:', error)
+        // Continue without Redis if initialization fails
+      }
+    }
+
+    // Check rate limit only if Redis is enabled and available
+    if (redis && await isRateLimited(ip, useRedis)) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.rateLimited },
         { status: 429 }
       )
     }
 
-    // Check cache if Redis is enabled
+    // Check cache if Redis is enabled and available
     let cacheStats: CacheStats = { hit: false }
-    if (useRedis) {
+    if (redis && useRedis) {
       try {
         const cacheKey = getCacheKey(method, url, body)
         const cachedResponse = await redis.get(cacheKey)
@@ -76,9 +88,11 @@ export async function POST(req: Request) {
             timestamp: number 
           }
           
+          const ttl = await redis.ttl(cacheKey)
+          
           cacheStats = {
             hit: true,
-            ttl: await redis.ttl(cacheKey),
+            ttl,
             timestamp,
             timeSaved: performance.now() - timestamp
           }
@@ -90,7 +104,6 @@ export async function POST(req: Request) {
         }
       } catch (error) {
         console.error('Cache retrieval failed:', error)
-        // Continue with the request if cache fails
       }
     }
 
@@ -116,8 +129,8 @@ export async function POST(req: Request) {
       cache: cacheStats
     }
 
-    // Store in cache only if Redis is enabled
-    if (useRedis) {
+    // Store in cache only if Redis is enabled and available
+    if (redis && useRedis) {
       try {
         const cacheKey = getCacheKey(method, url, body)
         const cacheValue = JSON.stringify({ 
@@ -125,16 +138,13 @@ export async function POST(req: Request) {
           timestamp: startTime 
         })
         
-        await redis.set(
-          cacheKey, 
-          cacheValue,
-          {
-            ex: Math.min(cache?.ttl || MAX_TTL, MAX_TTL)
-          }
-        )
+        const options: SetOptions = {
+          EX: Math.min(cache?.ttl || MAX_TTL, MAX_TTL)
+        }
+        
+        await redis.set(cacheKey, cacheValue, options)
       } catch (error) {
         console.error('Cache storage failed:', error)
-        // Continue if cache storage fails
       }
     }
 

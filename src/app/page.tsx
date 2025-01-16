@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -70,6 +70,22 @@ export default function FunApiTester() {
   const [activeTab, setActiveTab] = useState('request')
   const [cacheEnabled, setCacheEnabled] = useState(false)
   const [cacheTTL, setCacheTTL] = useState('60')
+  const [redisAvailable, setRedisAvailable] = useState(false)
+
+  // Check Redis availability on component mount
+  useEffect(() => {
+    async function checkRedis() {
+      try {
+        const res = await fetch('/api/redis-status')
+        const { available } = await res.json()
+        setRedisAvailable(available)
+      } catch (error) {
+        console.error('Failed to check Redis status:', error)
+        setRedisAvailable(false)
+      }
+    }
+    checkRedis()
+  }, [])
 
   const loadExampleApi = (example: typeof EXAMPLE_APIS[0]) => {
     setUrl(example.url)
@@ -275,64 +291,77 @@ ${typeof response.data === 'object'
                     CACHE SETTINGS
                   </h3>
                   
-                  {/* Cache Explanation */}
-                  <div className="mb-4 p-3 bg-[#F3F3F3] border-2 border-black text-sm">
-                    <p className="font-bold mb-2">🚀 How Caching Works:</p>
-                    <ul className="list-disc list-inside space-y-1 mb-3">
-                      <li>First request fetches fresh data and stores it in cache</li>
-                      <li>Subsequent identical requests return cached data instantly</li>
-                      <li>Cache expires after TTL (max 30 seconds)</li>
-                    </ul>
-                    <p className="font-bold mb-2">⚡ Service Limits:</p>
-                    <ul className="list-disc list-inside space-y-1 mb-3">
-                      <li>Maximum 30 requests per minute</li>
-                      <li>Maximum cache TTL: 30 seconds</li>
-                      <li>Request timeout: 30 seconds</li>
-                    </ul>
-                    <p className="font-bold mb-2">👨‍💻 Try it yourself:</p>
-                    <ol className="list-decimal list-inside space-y-1">
-                      <li>Enable caching below</li>
-                      <li>Make a request to any API</li>
-                      <li>Make the same request again within TTL</li>
-                      <li>Notice the faster response time and &quot;Cache HIT&quot; status!</li>
-                    </ol>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="cache-toggle"
-                        checked={cacheEnabled}
-                        onCheckedChange={setCacheEnabled}
-                      />
-                      <Label htmlFor="cache-toggle" className="font-bold">Enable Caching</Label>
-                    </div>
-                    {cacheEnabled && (
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="cache-ttl" className="font-bold">TTL (max 30s):</Label>
-                        <Input
-                          id="cache-ttl"
-                          type="number"
-                          min="1"
-                          max="30"
-                          value={cacheTTL}
-                          onChange={(e) => setCacheTTL(Math.min(parseInt(e.target.value), 30).toString())}
-                          className="w-24 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        />
+                  {redisAvailable ? (
+                    <>
+                      {/* Cache Explanation */}
+                      <div className="mb-4 p-3 bg-[#F3F3F3] border-2 border-black text-sm">
+                        <p className="font-bold mb-2">🚀 How Caching Works:</p>
+                        <ul className="list-disc list-inside space-y-1 mb-3">
+                          <li>First request fetches fresh data and stores it in cache</li>
+                          <li>Subsequent identical requests return cached data instantly</li>
+                          <li>Cache expires after TTL (max 30 seconds)</li>
+                        </ul>
+                        <p className="font-bold mb-2">⚡ Service Limits:</p>
+                        <ul className="list-disc list-inside space-y-1 mb-3">
+                          <li>Maximum 30 requests per minute</li>
+                          <li>Maximum cache TTL: 30 seconds</li>
+                          <li>Request timeout: 30 seconds</li>
+                        </ul>
+                        <p className="font-bold mb-2">👨‍💻 Try it yourself:</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>Enable caching below</li>
+                          <li>Make a request to any API</li>
+                          <li>Make the same request again within TTL</li>
+                          <li>Notice the faster response time and &quot;Cache HIT&quot; status!</li>
+                        </ol>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Cache Performance Tips */}
-                  {cacheEnabled && (
-                    <div className="text-sm text-gray-600 border-t-2 border-black pt-3">
-                      <p className="font-bold text-black mb-1">💡 Pro Tips:</p>
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>Perfect for repeated API calls to the same endpoint</li>
-                        <li>Great for testing rate-limited APIs</li>
-                        <li>Compare cached vs. uncached response times</li>
-                        <li>Watch for the green &quot;Cache HIT&quot; indicator in responses</li>
-                      </ul>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="cache-toggle"
+                            checked={cacheEnabled}
+                            onCheckedChange={setCacheEnabled}
+                          />
+                          <Label htmlFor="cache-toggle" className="font-bold">Enable Caching</Label>
+                        </div>
+                        {cacheEnabled && (
+                          <div className="flex items-center space-x-2">
+                            <Label htmlFor="cache-ttl" className="font-bold">TTL (max 30s):</Label>
+                            <Input
+                              id="cache-ttl"
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={cacheTTL}
+                              onChange={(e) => setCacheTTL(Math.min(parseInt(e.target.value), 30).toString())}
+                              className="w-24 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cache Performance Tips */}
+                      {cacheEnabled && (
+                        <div className="text-sm text-gray-600 border-t-2 border-black pt-3">
+                          <p className="font-bold text-black mb-1">💡 Pro Tips:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            <li>Perfect for repeated API calls to the same endpoint</li>
+                            <li>Great for testing rate-limited APIs</li>
+                            <li>Compare cached vs. uncached response times</li>
+                            <li>Watch for the green &quot;Cache HIT&quot; indicator in responses</li>
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-4 bg-[#F3F3F3] border-2 border-black text-sm">
+                      <p className="font-bold text-center">
+                        🔒 Caching is currently unavailable
+                      </p>
+                      <p className="text-center mt-2 text-gray-600">
+                        Redis is not configured for this instance
+                      </p>
                     </div>
                   )}
                 </div>

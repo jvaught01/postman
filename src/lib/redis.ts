@@ -1,23 +1,55 @@
-import { Redis } from '@upstash/redis'
+import { createClient, type RedisClientType } from 'redis'
+import { z } from 'zod'
 
-// Create Redis Client
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+// Validate environment variables when Redis is used
+const envSchema = z.object({
+  REDIS_URL: z.string().url(),
 })
 
-export const getCacheKey = (method: string, url: string, body?: string) => {
-  return `api:${method}:${url}:${body || ''}`
+let redisClient: RedisClientType | null = null
+
+export async function getRedisClient() {
+  // Return existing client if already initialized
+  if (redisClient) {
+    return redisClient
+  }
+
+  try {
+    // Validate Redis URL
+    const env = envSchema.parse({
+      REDIS_URL: process.env.REDIS_URL,
+    })
+
+    // Create new client
+    redisClient = createClient({
+      url: env.REDIS_URL,
+    })
+
+    // Connect and handle errors
+    await redisClient.connect()
+    redisClient.on('error', (err) => console.error('Redis Client Error', err))
+
+    return redisClient
+  } catch (error) {
+    console.error('Failed to initialize Redis:', error)
+    throw new Error('Redis initialization failed')
+  }
 }
 
-export type CacheConfig = {
+// Types for cache configuration
+export interface CacheConfig {
   enabled: boolean
-  ttl?: number // Time to live in seconds
+  ttl?: number
 }
 
-export type CacheStats = {
+export interface CacheStats {
   hit: boolean
   ttl?: number
   timestamp?: number
-  timeSaved?: number // Time saved by using cache
+  timeSaved?: number
+}
+
+// Generate cache key
+export function getCacheKey(method: string, url: string, body?: string): string {
+  return `cache:${method}:${url}:${body ? JSON.stringify(body) : ''}`
 } 
