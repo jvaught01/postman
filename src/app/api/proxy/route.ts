@@ -34,6 +34,8 @@ async function isRateLimited(ip: string, useRedis: boolean): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
+  const startTime = performance.now() // Start timing at the very beginning
+  
   try {
     // Get client IP
     const ip = req.headers.get('x-forwarded-for') || 'unknown'
@@ -83,23 +85,25 @@ export async function POST(req: Request) {
         const cachedResponse = await redis.get(cacheKey)
         
         if (cachedResponse && typeof cachedResponse === 'string') {
-          const { data, timestamp } = JSON.parse(cachedResponse) as { 
+          const { data, originalTiming } = JSON.parse(cachedResponse) as { 
             data: Record<string, unknown>
-            timestamp: number 
+            originalTiming: number // Store the original request time instead of timestamp
           }
           
           const ttl = await redis.ttl(cacheKey)
+          const endTime = performance.now()
+          const currentTiming = Math.round(endTime - startTime)
           
           cacheStats = {
             hit: true,
             ttl,
-            timestamp,
-            timeSaved: performance.now() - timestamp
+            timeSaved: originalTiming - currentTiming // Compare original time with current time
           }
           
           return NextResponse.json({
             ...data,
-            cache: cacheStats
+            cache: cacheStats,
+            timing: currentTiming
           })
         }
       } catch (error) {
@@ -108,12 +112,12 @@ export async function POST(req: Request) {
     }
 
     // Make the actual request
-    const startTime = performance.now()
+    const requestStartTime = performance.now()
     const response = await fetch(url, {
       method,
       headers: headers,
       body: method !== 'GET' && method !== 'HEAD' ? body : undefined,
-      signal: AbortSignal.timeout(30000) // 30 second timeout
+      signal: AbortSignal.timeout(30000)
     })
 
     const contentType = response.headers.get('content-type')
@@ -121,11 +125,15 @@ export async function POST(req: Request) {
       ? await response.json()
       : await response.text()
 
+    const endTime = performance.now()
+    const totalTiming = Math.round(endTime - startTime)
+    
     const responseData = {
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
       data,
+      timing: totalTiming,
       cache: cacheStats
     }
 
@@ -135,7 +143,7 @@ export async function POST(req: Request) {
         const cacheKey = getCacheKey(method, url, body)
         const cacheValue = JSON.stringify({ 
           data: responseData,
-          timestamp: startTime 
+          originalTiming: totalTiming // Store the original request timing
         })
         
         const options: SetOptions = {
