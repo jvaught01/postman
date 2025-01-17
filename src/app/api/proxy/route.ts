@@ -112,7 +112,6 @@ export async function POST(req: Request) {
     }
 
     // Make the actual request
-    const requestStartTime = performance.now()
     const response = await fetch(url, {
       method,
       headers: headers,
