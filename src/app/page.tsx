@@ -163,16 +163,22 @@ export default function FunApiTester() {
       return "YOUR RESPONSE WILL APPEAR HERE! ✨"
     }
 
-    const cacheInfo = response.cache
-      ? `Cache: ${response.cache.hit ? '✅ HIT' : '❌ MISS'}
-${response.cache.hit 
-  ? `Time Saved: ${Math.round(response.cache.timeSaved || 0)}ms
-TTL: ${response.cache.ttl}s`
-  : ''}`
-      : ''
+    // Format timing info based on cache status
+    const timingInfo = response.cache?.hit 
+      ? `Total Time: ${Math.round(response.timing || 0)}ms
+Time Saved: ${Math.round(response.cache.timeSaved || 0)}ms` 
+      : `Response Time: ${response.timing}ms`
+
+    const cacheInfo = response.cache?.hit 
+      ? `Cache: ✅ HIT
+TTL: ${response.cache.ttl}s
+${timingInfo}`
+      : response.timing 
+        ? `Cache: ❌ MISS
+${timingInfo}`
+        : ''
 
     return `Status: ${response.status} ${response.statusText}
-Time: ${response.timing}ms
 ${cacheInfo}
 
 Headers:
